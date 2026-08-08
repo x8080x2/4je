@@ -1,7 +1,8 @@
 /* inert-share: single source of truth for disabling clickable-but-inert UI items.
  * Loaded by both pages. No-ops silently when the elements are absent.
- *   1) "send via e-mail" meta item     (li.cards__meta-item containing the #email icon)
- *   2) social share links              (a[href] pointing to facebook / linkedin / twitter share)
+ *   1) "my randstad" login trigger     (button[data-rel-myrandstad-trigger])
+ *   2) "send via e-mail" meta item     (li.cards__meta-item containing the #email icon)
+ *   3) social share links              (a[href] pointing to facebook / linkedin / twitter share)
  * Runs in the capture phase so it fires before React's own handlers. */
 (function () {
   function isShareHref(h) {
@@ -11,6 +12,12 @@
   }
   document.addEventListener('click', function (e) {
     if (!e.target || !e.target.closest) return;
+    var trig = e.target.closest('button[data-rel-myrandstad-trigger]');
+    if (trig) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     var li = e.target.closest('li.cards__meta-item');
     if (li) {
       var use = li.querySelector('use');
