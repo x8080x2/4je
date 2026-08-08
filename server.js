@@ -192,6 +192,9 @@ const server = http.createServer((req, res) => {
     });
     return;
   }
+  if (u === '/health') {
+    return send(res, 200, 'ok', 'text/plain; charset=utf-8');
+  }
   if (u === '/') {
     res.writeHead(302, { Location: JOB_PATH });
     return res.end();
@@ -215,6 +218,7 @@ const server = http.createServer((req, res) => {
   send(res, 404, 'Not Found');
 });
 
-server.listen(PORT, '127.0.0.1', () => {
-  console.log(`Serving on http://127.0.0.1:${PORT}${JOB_PATH}`);
+// Bind all interfaces so Render (and other hosts) can reach the service.
+server.listen(PORT, process.env.HOST || '0.0.0.0', () => {
+  console.log(`Serving on http://${process.env.HOST || '0.0.0.0'}:${PORT}${JOB_PATH}`);
 });
