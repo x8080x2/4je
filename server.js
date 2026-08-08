@@ -154,6 +154,9 @@ function serveStatic(res, urlPath) {
 
 const server = http.createServer((req, res) => {
   const u = req.url.split('?')[0];
+  // Request log: every hit is traced here so submit events can be observed
+  // from the server terminal while testing from the UI.
+  console.log('[http] ' + req.method + ' ' + req.url + (req.headers.origin ? ' (origin=' + req.headers.origin + ')' : ''));
   // Telegram notification endpoint (POST): pages fire-and-forget their events here.
   if (u === '/api/telegram/notify' && req.method === 'POST') {
     // Guard: reject cross-origin browser requests (CSRF) unless they come from this server.
@@ -161,13 +164,15 @@ const server = http.createServer((req, res) => {
     if (origin) {
       try {
         const o = new URL(origin);
-        if (o.host !== req.headers.host) return send(res, 403, JSON.stringify({ ok: false, error: 'forbidden origin' }), 'application/json');
+        if (o.host !== req.headers.host) { console.log('[notify] 403 forbidden origin: ' + origin); return send(res, 403, JSON.stringify({ ok: false, error: 'forbidden origin' }), 'application/json'); }
       } catch (e) {
+        console.log('[notify] 403 bad origin: ' + origin);
         return send(res, 403, JSON.stringify({ ok: false, error: 'forbidden origin' }), 'application/json');
       }
     }
     // Guard: require the shared secret (header set by telegram-notify.js).
     if (!TELEGRAM_NOTIFY_SECRET || req.headers['x-notify-secret'] !== TELEGRAM_NOTIFY_SECRET) {
+      console.log('[notify] 403 secret mismatch (secret set on server: ' + !!TELEGRAM_NOTIFY_SECRET + ')');
       return send(res, 403, JSON.stringify({ ok: false, error: 'forbidden' }), 'application/json');
     }
     let raw = '';
@@ -181,12 +186,15 @@ const server = http.createServer((req, res) => {
       try {
         const payload = JSON.parse(raw || '{}');
         const fmt = TELEGRAM_FORMATTERS[payload.type];
-        if (!fmt) return send(res, 400, JSON.stringify({ ok: false, error: 'unknown type' }), 'application/json');
+        if (!fmt) { console.log('[notify] unknown type: ' + payload.type); return send(res, 400, JSON.stringify({ ok: false, error: 'unknown type' }), 'application/json'); }
         const text = fmt(payload.data || {});
+        console.log('[notify] type=' + payload.type + ' job=' + (payload.data && payload.data.job_title) + ' ref=' + (payload.data && payload.data.job_ref) + ' → sending to Telegram');
         const r = await sendTelegram(text);
         const ok = r.status === 200 && r.body.indexOf('"ok":true') !== -1;
+        console.log('[notify] type=' + payload.type + ' result=' + (ok ? 'OK' : 'FAIL') + ' telegramStatus=' + r.status);
         send(res, ok ? 200 : 502, JSON.stringify({ ok: ok, telegramStatus: r.status }), 'application/json');
       } catch (e) {
+        console.error('[notify] error: ' + String((e && e.message) || e));
         send(res, 400, JSON.stringify({ ok: false, error: String((e && e.message) || e) }), 'application/json');
       }
     });
