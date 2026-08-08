@@ -5,6 +5,7 @@
   "description": "Static job details + apply pages with Telegram notifications",
   "main": "server.js",
   "scripts": {
+    "build": "node --check server.js",
     "start": "node server.js"
   },
   "engines": {
