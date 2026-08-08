@@ -16,29 +16,26 @@
       job_location: [loc.city, loc.stateAbbreviation || loc.state].filter(Boolean).join(', ')
     };
   }
+  /* Resolves with { ok, status } so callers can show send feedback. */
   function notify(type, data) {
     var url = '/api/telegram/notify';
-    var secret = (typeof window.__NOTIFY_SECRET__ !== 'undefined' ? window.__NOTIFY_SECRET__ : '');
-    console.log('[telegram] notify send type=' + type + ' secret=' + (secret ? 'set' : 'MISSING'));
-    try {
-      fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Notify-Secret': secret
-        },
-        body: JSON.stringify({ type: type, data: data })
-      }).then(function (r) {
-        console.log('[telegram] notify response status=' + r.status);
-        return r.json().catch(function () { return {}; });
-      }).then(function (d) {
+    console.log('[telegram] notify send type=' + type);
+    return fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ type: type, data: data })
+    }).then(function (r) {
+      console.log('[telegram] notify response status=' + r.status);
+      return r.json().catch(function () { return {}; }).then(function (d) {
         console.log('[telegram] notify body', d);
-      }).catch(function (e) {
-        console.error('[telegram] notify error', e);
+        return { ok: !!d.ok && r.status === 200, status: r.status };
       });
-    } catch (e) {
-      console.error('[telegram] notify threw', e);
-    }
+    }).catch(function (e) {
+      console.error('[telegram] notify error', e);
+      return { ok: false, status: 0, error: e };
+    });
   }
   function field(f, name) {
     var el = f ? f.querySelector('[name="' + name + '"]') : null;
@@ -80,6 +77,26 @@
     var file = fileEl && fileEl.files && fileEl.files[0];
     var meta = jobMeta();
     console.log('[telegram] application valid — job=' + meta.job_title + ' ref=' + meta.job_ref + ' loc=' + meta.job_location);
+
+    /* Submit UX: button shows a loading state, then a sent/error message. */
+    var btn = document.getElementById('jobApplyButton');
+    var busy = function (isBusy) {
+      if (!btn) return;
+      btn.disabled = isBusy;
+      btn.setAttribute('aria-busy', isBusy ? 'true' : 'false');
+      if (isBusy) { if (!btn.dataset.label) btn.dataset.label = btn.textContent; btn.textContent = 'submitting\u2026'; }
+      else if (btn.dataset.label) btn.textContent = btn.dataset.label;
+    };
+    var feedback = function (msg, ok) {
+      var wrap = btn ? btn.closest('.form-group--action-apply') : null;
+      if (!wrap) { console.log('[telegram] feedback: ' + msg); return; }
+      var el = wrap.querySelector('.job-apply__feedback');
+      if (!el) { el = document.createElement('div'); el.className = 'job-apply__feedback'; wrap.appendChild(el); }
+      el.className = 'job-apply__feedback ' + (ok ? 'job-apply__feedback--ok' : 'job-apply__feedback--error');
+      el.textContent = msg;
+    };
+    feedback('', true);
+    busy(true);
     notify('application', {
       first_name: field(f, 'first_name'),
       last_name: field(f, 'last_name'),
@@ -95,6 +112,11 @@
       job_title: meta.job_title,
       job_ref: meta.job_ref,
       job_location: meta.job_location
+    }).then(function (r) {
+      busy(false);
+      feedback(r.ok
+        ? 'application sent \u2014 we\u2019ll be in touch'
+        : 'couldn\u2019t send your application \u2014 please try again', r.ok);
     });
   }, true);
 

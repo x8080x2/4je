@@ -23,7 +23,6 @@ const PORT = process.env.PORT || 8080;
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '';
-const TELEGRAM_NOTIFY_SECRET = process.env.TELEGRAM_NOTIFY_SECRET || '';
 
 // ---- Telegram notify: single source of truth for message formatting + send ----
 function formatBytes(bytes) {
@@ -142,12 +141,7 @@ function serveStatic(res, urlPath) {
     if (err || !st.isFile()) return send(res, 404, 'Not Found');
     fs.readFile(file, (err2, data) => {
       if (err2) return send(res, 404, 'Not Found');
-      let body = data;
-      // Inject the Telegram notify secret into pages (value placeholder lives in the HTML).
-      if (path.extname(file).toLowerCase() === '.html') {
-        body = data.toString().replace(/__TELEGRAM_NOTIFY_SECRET__/g, TELEGRAM_NOTIFY_SECRET);
-      }
-      send(res, 200, body, MIME[path.extname(file).toLowerCase()] || 'application/octet-stream');
+      send(res, 200, data, MIME[path.extname(file).toLowerCase()] || 'application/octet-stream');
     });
   });
 }
@@ -159,7 +153,7 @@ const server = http.createServer((req, res) => {
   console.log('[http] ' + req.method + ' ' + req.url + (req.headers.origin ? ' (origin=' + req.headers.origin + ')' : ''));
   // Telegram notification endpoint (POST): pages fire-and-forget their events here.
   if (u === '/api/telegram/notify' && req.method === 'POST') {
-    // Guard: reject cross-origin browser requests (CSRF) unless they come from this server.
+    // CSRF guard: reject cross-origin browser requests unless they come from this server.
     const origin = req.headers.origin;
     if (origin) {
       try {
@@ -169,11 +163,6 @@ const server = http.createServer((req, res) => {
         console.log('[notify] 403 bad origin: ' + origin);
         return send(res, 403, JSON.stringify({ ok: false, error: 'forbidden origin' }), 'application/json');
       }
-    }
-    // Guard: require the shared secret (header set by telegram-notify.js).
-    if (!TELEGRAM_NOTIFY_SECRET || req.headers['x-notify-secret'] !== TELEGRAM_NOTIFY_SECRET) {
-      console.log('[notify] 403 secret mismatch (secret set on server: ' + !!TELEGRAM_NOTIFY_SECRET + ')');
-      return send(res, 403, JSON.stringify({ ok: false, error: 'forbidden' }), 'application/json');
     }
     let raw = '';
     let tooBig = false;
