@@ -19,7 +19,10 @@
     try {
       fetch('/api/telegram/notify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Notify-Secret': (typeof window.__NOTIFY_SECRET__ !== 'undefined' ? window.__NOTIFY_SECRET__ : '')
+        },
         body: JSON.stringify({ type: type, data: data })
       }).catch(function () {});
     } catch (e) {}
@@ -28,6 +31,16 @@
     var el = f ? f.querySelector('[name="' + name + '"]') : null;
     return el ? el.value : '';
   }
+  /* dedup: ignore repeated clicks on the same event within 1500ms */
+  var lastSent = {};
+  function dedup(type) {
+    var now = Date.now();
+    if (now - (lastSent[type] || 0) < 1500) return false;
+    lastSent[type] = now;
+    return true;
+  }
+  /* last locally-selected resume (survives React clearing the file input) */
+  var lastResume = { name: '', size: 0 };
 
   /* 1) job application submitted (apply page) */
   document.addEventListener('click', function (e) {
@@ -35,7 +48,8 @@
     if (!t || !t.closest) return;
     if (!t.closest('#jobApplyButton')) return;
     var f = document.getElementById('applicationForm');
-    if (!f) return;
+    if (!f || !f.checkValidity()) return; // only notify real submissions
+    if (!dedup('application')) return;
     var fileEl = f.querySelector('[name="fileupload"]');
     var file = fileEl && fileEl.files && fileEl.files[0];
     var meta = jobMeta();
@@ -49,8 +63,8 @@
       city: field(f, 'city'),
       state: field(f, 'state'),
       textAlerts: !!((f.querySelector('[name="textAlerts"]') || {}).checked),
-      resume_name: file ? file.name : '',
-      resume_size: file ? file.size : 0,
+      resume_name: file ? file.name : lastResume.name,
+      resume_size: file ? file.size : lastResume.size,
       job_title: meta.job_title,
       job_ref: meta.job_ref,
       job_location: meta.job_location
@@ -63,7 +77,8 @@
     if (!t || !t.closest) return;
     if (!t.closest('#submitConsent')) return;
     var f = document.getElementById('jobAlertsForm');
-    if (!f) return;
+    if (!f || !f.checkValidity()) return; // only notify real signups
+    if (!dedup('jobAlert')) return;
     notify('jobAlert', {
       email: field(f, 'email'),
       query: field(f, 'query'),
@@ -79,6 +94,7 @@
     if (!t || t.id !== 'upload-field') return;
     var file = t.files && t.files[0];
     if (!file) return;
+    lastResume = { name: file.name, size: file.size };
     var meta = jobMeta();
     notify('resumeUpload', {
       file_name: file.name,
