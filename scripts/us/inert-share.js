@@ -22,7 +22,10 @@
     if (li) {
       var use = li.querySelector('use');
       var href = use ? (use.getAttribute('xlink:href') || '') : '';
-      if (href.indexOf('#email') !== -1) {
+      var isEmail = href.indexOf('#email') !== -1 ||
+                    (li.textContent || '').indexOf('send via e-mail') !== -1 ||
+                    !!li.querySelector('a[href^="mailto:"]');
+      if (isEmail) {
         e.preventDefault();
         e.stopPropagation();
         return;
