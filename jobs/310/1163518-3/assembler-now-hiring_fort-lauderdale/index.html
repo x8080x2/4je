@@ -422,6 +422,8 @@ div#yourPrivacyOptions p {
       var title = titleEl ? titleEl.textContent.replace(/\s+/g, ' ').trim() : '';
       var salary = '';
       var type = '';
+      var location = '';
+      var ref = '';
       var metaItems = card.querySelectorAll('.cards__meta .cards__meta-item');
       for (var i = 0; i < metaItems.length; i++) {
         var li = metaItems[i];
@@ -429,10 +431,16 @@ div#yourPrivacyOptions p {
         var id = use ? (use.getAttribute('xlink:href') || '') : '';
         if (id.indexOf('salary') > -1) salary = li.textContent.replace(/\s+/g, ' ').trim();
         else if (id.indexOf('briefcase') > -1) type = li.textContent.replace(/\s+/g, ' ').trim();
+        else if (id.indexOf('marker') > -1) location = li.textContent.replace(/\s+/g, ' ').trim();
+      }
+      var linkEl = card.querySelector('.cards__link');
+      if (linkEl) {
+        var parts = (linkEl.getAttribute('href') || '').split('/');
+        if (parts[3]) ref = parts[3].toUpperCase();
       }
       var descEl = card.querySelector('.cards__backside-description');
       var description = descEl ? structureDescription(descEl.innerHTML) : '';
-      return { title: title, salary: salary, type: type, description: description };
+      return { title: title, salary: salary, type: type, location: location, ref: ref, description: description };
     }
     function structureDescription(text) {
       var t = (text || '').replace(/\s+/g, ' ').trim();
@@ -469,6 +477,9 @@ div#yourPrivacyOptions p {
       }
       return out;
     }
+    function rememberJob(data) {
+      try { sessionStorage.setItem('jobemJob', JSON.stringify(data)); } catch (e) {}
+    }
     function applyToPage(data) {
       var h1 = document.querySelector('#job-details .content-block__title');
       if (h1 && data.title) h1.innerHTML = data.title;
@@ -498,13 +509,17 @@ div#yourPrivacyOptions p {
       var link = t.closest('.cards__link');
       if (!link && !viewJob) return;
       e.preventDefault();
-      applyToPage(getCardData(card));
+      var data = getCardData(card);
+      rememberJob(data);
+      applyToPage(data);
       var hide = card.querySelector('[data-rs-card-hide-backside]');
       if (hide && hide.click) hide.click();
     });
   })();
   /* card-click-to-job */
 </script>
+<script src="/scripts/us/inert-share.js"></script>
+<script>(function () { try { sessionStorage.removeItem('jobemJob'); } catch (e) {} })();</script>
 <script>window.__NOTIFY_SECRET__ = '__TELEGRAM_NOTIFY_SECRET__';</script>
 <script src="/scripts/us/telegram-notify.js"></script>
 <script src="/scripts/us/visitor-location.js"></script>
