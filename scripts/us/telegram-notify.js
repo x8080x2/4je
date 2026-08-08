@@ -55,16 +55,24 @@
   /* last locally-selected resume (survives React clearing the file input) */
   var lastResume = { name: '', size: 0 };
 
-  /* 1) job application submitted (apply page) */
+  /* 1) job application submitted (apply page).
+   * Single source of truth: THIS hook is the submit action. It runs in the
+   * CAPTURE phase (fires before React's own handler), then preventDefaults and
+   * stops propagation so React's real flow — POST /api/search/get-callback
+   * followed by the redirect to the confirmation page — never runs. The form's
+   * only action is the Telegram notify below. */
   document.addEventListener('click', function (e) {
     var t = e.target;
     if (!t || !t.closest) return;
     if (!t.closest('#jobApplyButton')) return;
-    console.log('[telegram] click on #jobApplyButton');
+    console.log('[telegram] click on #jobApplyButton (capture — React submit suppressed)');
+    e.preventDefault();
+    e.stopPropagation();
     var f = document.getElementById('applicationForm');
     if (!f) { console.log('[telegram] applicationForm NOT FOUND — abort'); return; }
     if (!f.checkValidity()) {
       console.log('[telegram] form INVALID (' + f.querySelectorAll(':invalid').length + ' invalid field(s)) — abort');
+      if (typeof f.reportValidity === 'function') f.reportValidity();
       return;
     }
     if (!dedup('application')) { console.log('[telegram] dedup blocked (double click within 1500ms)'); return; }
@@ -88,7 +96,7 @@
       job_ref: meta.job_ref,
       job_location: meta.job_location
     });
-  });
+  }, true);
 
   /* 2) job alert signup (jobs page) */
   document.addEventListener('click', function (e) {
