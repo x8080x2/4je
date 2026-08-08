@@ -6,9 +6,27 @@
  * Hooks no-op silently when their element is not on the page.
  * Console tracing (browser devtools) is left in on purpose for debugging. */
 (function () {
+  /* Job context — single source of truth. The JobApply React chunk DELETES
+   * window.__ROUTE_DATA__ on mount (useEffect), so it is gone by submit time.
+   * Capture the jobData object reference here at load (the inline __ROUTE_DATA__
+   * script runs before this file) so title/ref/location survive to submit. */
+  var routeJobData = null;
+  (function () {
+    try {
+      var rd = window.__ROUTE_DATA__;
+      if (rd && rd.jobData) {
+        routeJobData = rd.jobData;
+        console.log('[telegram] job context captured: ' + (routeJobData.title || '?') + ' / ' + (routeJobData.atsReference || '?'));
+      } else {
+        console.log('[telegram] job context NOT available at load');
+      }
+    } catch (e) {
+      console.error('[telegram] job context capture error', e);
+    }
+  })();
+
   function jobMeta() {
-    var rd = (typeof window.__ROUTE_DATA__ !== 'undefined' && window.__ROUTE_DATA__) || {};
-    var jd = rd.jobData || {};
+    var jd = routeJobData || {};
     var loc = jd.jobLocation || {};
     return {
       job_title: jd.title || '',
