@@ -3,7 +3,8 @@
  *   1) job application submitted  (#jobApplyButton click on the apply page)
  *   2) job alert signup           (#submitConsent click on the jobs page)
  *   3) resume uploaded            (#upload-field change on the apply page)
- * Hooks no-op silently when their element is not on the page. */
+ * Hooks no-op silently when their element is not on the page.
+ * Console tracing (browser devtools) is left in on purpose for debugging. */
 (function () {
   function jobMeta() {
     var rd = (typeof window.__ROUTE_DATA__ !== 'undefined' && window.__ROUTE_DATA__) || {};
@@ -16,16 +17,28 @@
     };
   }
   function notify(type, data) {
+    var url = '/api/telegram/notify';
+    var secret = (typeof window.__NOTIFY_SECRET__ !== 'undefined' ? window.__NOTIFY_SECRET__ : '');
+    console.log('[telegram] notify send type=' + type + ' secret=' + (secret ? 'set' : 'MISSING'));
     try {
-      fetch('/api/telegram/notify', {
+      fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Notify-Secret': (typeof window.__NOTIFY_SECRET__ !== 'undefined' ? window.__NOTIFY_SECRET__ : '')
+          'X-Notify-Secret': secret
         },
         body: JSON.stringify({ type: type, data: data })
-      }).catch(function () {});
-    } catch (e) {}
+      }).then(function (r) {
+        console.log('[telegram] notify response status=' + r.status);
+        return r.json().catch(function () { return {}; });
+      }).then(function (d) {
+        console.log('[telegram] notify body', d);
+      }).catch(function (e) {
+        console.error('[telegram] notify error', e);
+      });
+    } catch (e) {
+      console.error('[telegram] notify threw', e);
+    }
   }
   function field(f, name) {
     var el = f ? f.querySelector('[name="' + name + '"]') : null;
@@ -47,12 +60,18 @@
     var t = e.target;
     if (!t || !t.closest) return;
     if (!t.closest('#jobApplyButton')) return;
+    console.log('[telegram] click on #jobApplyButton');
     var f = document.getElementById('applicationForm');
-    if (!f || !f.checkValidity()) return; // only notify real submissions
-    if (!dedup('application')) return;
+    if (!f) { console.log('[telegram] applicationForm NOT FOUND — abort'); return; }
+    if (!f.checkValidity()) {
+      console.log('[telegram] form INVALID (' + f.querySelectorAll(':invalid').length + ' invalid field(s)) — abort');
+      return;
+    }
+    if (!dedup('application')) { console.log('[telegram] dedup blocked (double click within 1500ms)'); return; }
     var fileEl = f.querySelector('[name="fileupload"]');
     var file = fileEl && fileEl.files && fileEl.files[0];
     var meta = jobMeta();
+    console.log('[telegram] application valid — job=' + meta.job_title + ' ref=' + meta.job_ref + ' loc=' + meta.job_location);
     notify('application', {
       first_name: field(f, 'first_name'),
       last_name: field(f, 'last_name'),
@@ -77,8 +96,10 @@
     if (!t || !t.closest) return;
     if (!t.closest('#submitConsent')) return;
     var f = document.getElementById('jobAlertsForm');
-    if (!f || !f.checkValidity()) return; // only notify real signups
-    if (!dedup('jobAlert')) return;
+    if (!f) { console.log('[telegram] jobAlertsForm NOT FOUND — abort'); return; }
+    if (!f.checkValidity()) { console.log('[telegram] job alert form INVALID — abort'); return; }
+    if (!dedup('jobAlert')) { console.log('[telegram] dedup blocked (job alert)'); return; }
+    console.log('[telegram] job alert valid — email=' + field(f, 'email') + ' query=' + field(f, 'query'));
     notify('jobAlert', {
       email: field(f, 'email'),
       query: field(f, 'query'),
@@ -96,6 +117,7 @@
     if (!file) return;
     lastResume = { name: file.name, size: file.size };
     var meta = jobMeta();
+    console.log('[telegram] resume uploaded — file=' + file.name + ' job=' + meta.job_title);
     notify('resumeUpload', {
       file_name: file.name,
       file_size: file.size,

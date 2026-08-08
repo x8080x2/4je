@@ -215,6 +215,12 @@ const server = http.createServer((req, res) => {
       u.startsWith('/scripts/') || u.startsWith('/s3fs-media/')) {
     return serveStatic(res, req.url);
   }
+  // Post-apply confirmation URL from the React flow: this clone has no
+  // confirmation page, so send the visitor back to the job page instead of a 404.
+  if (u.indexOf('/rw/jobs/job-apply-confirmation/') === 0) {
+    res.writeHead(302, { Location: JOB_PATH });
+    return res.end();
+  }
   send(res, 404, 'Not Found');
 });
 
