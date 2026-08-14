@@ -1,4 +1,5 @@
-// Two-page static server: serves ONLY the job detail page and the apply page.
+// Static server: serves the Customer Service Representative job page + apply page,
+// the Telegram notify + health endpoints, and static assets.
 // Root "/" redirects to the job page. Everything else returns 404.
 const http = require('http');
 const https = require('https');
@@ -98,8 +99,8 @@ function sendTelegram(text) {
   });
 }
 
-const JOB_PATH = '/jobs/310/1163518-3/assembler-now-hiring_fort-lauderdale/';
-const APPLY_PATH = '/jobs/apply/310/1163518-3/';
+const JOB_PATH = '/jobs/308/AB_4976816/administrative-assistant_fort-lauderdale/';
+const APPLY_PATH = '/jobs/apply/308/AB_4976816/';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
