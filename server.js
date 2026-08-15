@@ -99,8 +99,18 @@ function sendTelegram(text) {
   });
 }
 
-const JOB_PATH = '/jobs/308/AB_4976816/administrative-assistant_fort-lauderdale/';
-const APPLY_PATH = '/jobs/apply/308/AB_4976816/';
+// ---- routes: single source of truth for every page this server serves ----
+// URL → relative file mapping. Each job/apply page lives at exactly ONE URL.
+const JOB_PAGES = {
+  '/jobs/308/AB_4976816/administrative-assistant_fort-lauderdale/': 'jobs/308/AB_4976816/administrative-assistant_fort-lauderdale/index.html',
+  '/jobs/310/1142422-8/sales-representative_fort-lauderdale/': 'jobs/310/1142422-8/sales-representative_fort-lauderdale/index.html',
+  '/jobs/309/ab_4979675/administrative-assistance_fort-lauderdale/': 'jobs/309/ab_4979675/administrative-assistance_fort-lauderdale/index.html',
+};
+const APPLY_PAGES = {
+  '/jobs/apply/308/AB_4976816/': 'jobs/apply/308/AB_4976816/index.html',
+  '/jobs/apply/310/1142422-8/': 'jobs/apply/310/1142422-8/index.html',
+  '/jobs/apply/309/ab_4979675/': 'jobs/apply/309/ab_4979675/index.html',
+};
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -194,15 +204,13 @@ const server = http.createServer((req, res) => {
     return send(res, 200, 'ok', 'text/plain; charset=utf-8');
   }
   if (u === '/') {
-    res.writeHead(302, { Location: JOB_PATH });
+    res.writeHead(302, { Location: Object.keys(JOB_PAGES)[0] });
     return res.end();
   }
-  if (u === JOB_PATH || u === JOB_PATH.slice(0, -1)) {
-    return serveStatic(res, path.join(JOB_PATH, 'index.html'));
-  }
-  if (u === APPLY_PATH || u === APPLY_PATH.slice(0, -1)) {
-    return serveStatic(res, path.join(APPLY_PATH, 'index.html'));
-  }
+  const jobFile = JOB_PAGES[u] || JOB_PAGES[u + '/'];
+  if (jobFile) return serveStatic(res, jobFile);
+  const applyFile = APPLY_PAGES[u] || APPLY_PAGES[u + '/'];
+  if (applyFile) return serveStatic(res, applyFile);
   // The app's data fallback endpoint (POST /api/search/get-callback) - serve
   // the captured real response so the page gets its expected data.
   if (u === '/api/search/get-callback') {
@@ -221,5 +229,5 @@ const server = http.createServer((req, res) => {
 
 // Bind all interfaces so Render (and other hosts) can reach the service.
 server.listen(PORT, process.env.HOST || '0.0.0.0', () => {
-  console.log(`Serving on http://${process.env.HOST || '0.0.0.0'}:${PORT}${JOB_PATH}`);
+  console.log(`Serving on http://${process.env.HOST || '0.0.0.0'}:${PORT}${Object.keys(JOB_PAGES)[0]}`);
 });

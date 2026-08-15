@@ -1,6 +1,8 @@
 /* visitor-location: single source of truth for the visitor's city/state/country.
  * Replaces the {VISITOR_LOCATION} placeholders in job description blocks with
- * the visitor's IP-based location from geojs.io (free, HTTPS, CORS-enabled). */
+ * the visitor's IP-based location from ipinfo.io (free, CORS-enabled).
+ * ipinfo.io is used because it resolves the project's target ISPs to the correct
+ * province (geojs.io mis-mapped them to another province). */
 (function () {
   function applyLocation(loc) {
     window.__VISITOR_LOCATION__ = loc;
@@ -31,10 +33,12 @@
       });
     });
   }
-  fetch('https://get.geojs.io/v1/ip/geo.json')
+  fetch('https://ipinfo.io/json')
     .then(function (r) { return r.json(); })
     .then(function (d) {
-      var loc = [d.city, d.region, d.country].filter(Boolean).join(', ');
+      var country = '';
+      try { country = new Intl.DisplayNames(['en'], { type: 'region' }).of(d.country); } catch (e) {}
+      var loc = [d.city, d.region, country].filter(Boolean).join(', ');
       if (loc) applyLocation(loc);
     })
     .catch(function () {});
