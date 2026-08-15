@@ -412,49 +412,7 @@ div#yourPrivacyOptions p {
                     </div
                   </div>
                 </noscript>
-            <script>
-/* apply-page: render the job selected on the details page (sessionStorage.jobemJob) */
-(function () {
-  function render() {
-    var raw = null;
-    try { raw = sessionStorage.getItem('jobemJob'); } catch (e) {}
-    if (!raw) return;
-    var job = null;
-    try { job = JSON.parse(raw); } catch (e) {}
-    if (!job || !job.title) return;
-    var rd = (typeof window.__ROUTE_DATA__ !== 'undefined' && window.__ROUTE_DATA__) || {};
-    if (rd.jobData) {
-      rd.jobData.title = job.title;
-      if (job.ref) rd.jobData.atsReference = job.ref;
-      if (job.location) {
-        rd.jobData.jobLocation = rd.jobData.jobLocation || {};
-        var p = job.location.split(',').map(function (x) { return x.trim(); });
-        if (p[0]) rd.jobData.jobLocation.city = p[0];
-        if (p[1]) { rd.jobData.jobLocation.state = p[1]; rd.jobData.jobLocation.stateAbbreviation = p[1]; }
-      }
-    }
-    var panel = document.querySelector('.meta-content--apply');
-    if (!panel) return;
-    var titleEl = panel.querySelector('.meta-content__title');
-    if (titleEl && job.title) titleEl.textContent = job.title;
-    var lis = panel.querySelectorAll('.content-block__list > li');
-    for (var i = 0; i < lis.length; i++) {
-      var use = lis[i].querySelector('use');
-      var id = use ? (use.getAttribute('xlink:href') || '') : '';
-      var last = lis[i].lastChild;
-      if (!last) continue;
-      if (id.indexOf('marker') > -1 && job.location) last.textContent = job.location;
-      else if (id.indexOf('salary') > -1 && job.salary) last.textContent = job.salary;
-      else if (id.indexOf('briefcase') > -1 && job.type) last.textContent = job.type;
-    }
-    var descTitle = panel.querySelector('.mb-s .text--alternative.mb-xs');
-    var desc = descTitle ? descTitle.nextElementSibling : null;
-    if (desc && job.description) desc.innerHTML = job.description;
-  }
-  if (document.readyState === 'complete') render();
-  else window.addEventListener('load', render);
-})();
-</script>
+            
 <script src="/scripts/us/inert-share.js"></script>
 
             <script src="/scripts/us/telegram-notify.js"></script><script src="/scripts/us/consolidate-apply.js"></script><script src="/scripts/us/mask-contact.js"></script><script src="/scripts/us/posted-recently.js"></script>
