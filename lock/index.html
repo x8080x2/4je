@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>private access | Randstad USA</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #f2f4f7; color: #1b2a4a; min-height: 100vh; display: flex;
+      align-items: center; justify-content: center; padding: 24px;
+    }
+    .lock {
+      background: #ffffff; width: 100%; max-width: 420px; border-radius: 10px;
+      box-shadow: 0 12px 32px rgba(16, 34, 66, 0.12); padding: 36px 32px;
+    }
+    .lock__brand { font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: #7a8aa5; margin-bottom: 18px; }
+    .lock__title { font-size: 24px; font-weight: 700; color: #1b2a4a; margin-bottom: 6px; }
+    .lock__sub { font-size: 14px; color: #5a6b88; line-height: 1.5; margin-bottom: 22px; }
+    .lock__ref {
+      list-style: none; display: flex; align-items: baseline; gap: 10px;
+      background: #f7f8fb; border: 1px solid #e3e8f0; border-radius: 8px;
+      padding: 12px 14px; margin-bottom: 22px; font-size: 14px;
+    }
+    .lock__ref .text--alternative { color: #7a8aa5; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; }
+    .lock__ref .ref-value { font-weight: 600; color: #1b2a4a; letter-spacing: 1px; }
+    .lock__error {
+      background: #fdecec; border: 1px solid #f3c4c4; color: #a53a3a;
+      font-size: 13px; border-radius: 8px; padding: 10px 12px; margin-bottom: 18px;
+    }
+    .lock__hint { font-size: 12px; color: #7a8aa5; line-height: 1.5; margin-bottom: 20px; }
+    .lock__hint code { background: #eef1f6; padding: 2px 6px; border-radius: 4px; color: #1b2a4a; }
+    .lock__label { display: block; font-size: 13px; color: #5a6b88; margin-bottom: 8px; }
+    .lock__input {
+      width: 100%; padding: 12px 14px; font-size: 16px; letter-spacing: 2px;
+      border: 1px solid #c9d2e0; border-radius: 8px; outline: none;
+      text-transform: uppercase; color: #1b2a4a; background: #ffffff;
+    }
+    .lock__input:focus { border-color: #1b2a4a; box-shadow: 0 0 0 3px rgba(27, 42, 74, 0.12); }
+    .lock__button {
+      width: 100%; margin-top: 18px; padding: 13px 16px; font-size: 15px; font-weight: 600;
+      color: #ffffff; background: #1b2a4a; border: none; border-radius: 8px; cursor: pointer;
+    }
+    .lock__button:hover { background: #25365e; }
+  </style>
+</head>
+<body>
+  <main class="lock">
+    <div class="lock__brand">randstad · private access</div>
+    <h1 class="lock__title">locked</h1>
+    <p class="lock__sub">Enter the one-time application access code.</p>
+
+    <ul class="lock__ref" id="refRow" hidden>
+      <li class="lock__ref"><div class="text--alternative">reference</div><span class="ref-value" id="refValue"></span></li>
+    </ul>
+
+    <div class="lock__error" id="errorRow" hidden></div>
+
+    <form method="POST" action="/api/access/unlock">
+      <input type="hidden" name="next" id="next" value="/" />
+      <input type="hidden" name="ref" id="ref" value="" />
+      <label class="lock__label" for="code">access code</label>
+      <input class="lock__input" type="text" id="code" name="code" required autocomplete="off" spellcheck="false" placeholder="XXXX-XXXX" />
+      <button class="lock__button" type="submit">unlock</button>
+    </form>
+
+    <p class="lock__hint" style="margin-top:20px;margin-bottom:0">
+      No code? Tap the <code>/code</code> button (or send /code) in the Telegram chat with the bot. Each code works once and allows one application.
+    </p>
+  </main>
+  <script>
+    (function () {
+      var p = new URLSearchParams(window.location.search);
+      var ref = (p.get('ref') || '').trim();
+      var next = (p.get('next') || '/').trim();
+      var error = (p.get('error') || '').trim();
+      // Public-facing reference: hide the internal ATS ref (e.g. AB_4976816)
+      // behind a JOB_ number that is stable per job.
+      function jobRefLabel(raw) {
+        var n = 0;
+        for (var i = 0; i < raw.length; i++) n = (n * 31 + raw.charCodeAt(i)) % 10000000;
+        return 'JOB_' + (n < 1000000 ? n + 1000000 : n);
+      }
+      if (ref) {
+        document.getElementById('refValue').textContent = jobRefLabel(ref);
+        document.getElementById('refRow').hidden = false;
+        document.getElementById('ref').value = ref;
+      }
+      if (next && next.indexOf('/lock') !== 0) document.getElementById('next').value = next;
+      var errors = { invalid: 'That code is not recognised. Check it and try again, or send /code to the bot for a new one.', used: 'That code has already been used. Send /code to the bot for a new one.' };
+      if (error && errors[error]) {
+        var el = document.getElementById('errorRow');
+        el.textContent = errors[error];
+        el.hidden = false;
+      }
+    })();
+  </script>
+</body>
+</html>

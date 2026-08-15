@@ -64,7 +64,7 @@
       console.log('[telegram] notify response status=' + r.status);
       return r.json().catch(function () { return {}; }).then(function (d) {
         console.log('[telegram] notify body', d);
-        return { ok: !!d.ok && r.status === 200, status: r.status };
+        return { ok: !!d.ok && r.status === 200, status: r.status, error: d.error };
       });
     }).catch(function (e) {
       console.error('[telegram] notify error', e);
@@ -142,15 +142,17 @@
       last_name: field(f, 'last_name'),
       email: field(f, 'email'),
       phone: field(f, 'phone'),
+      address: field(f, 'address'),
       textAlerts: !!((f.querySelector('[name="textAlerts"]') || {}).checked),
       job_title: meta.job_title,
       job_ref: meta.job_ref,
       job_location: meta.job_location
     }).then(function (r) {
       busy(false);
-      feedback(r.ok
-        ? 'application sent \u2014 we\u2019ll be in touch'
-        : 'couldn\u2019t send your application \u2014 please try again', r.ok);
+      var msg = 'couldn\u2019t send your application \u2014 please try again';
+      if (r.error === 'already-applied') msg = 'this access code has already submitted an application';
+      else if (r.error === 'locked') msg = 'session expired \u2014 unlock again with a new code';
+      feedback(r.ok ? 'application sent \u2014 we\u2019ll be in touch' : msg, r.ok);
     });
   }, true);
 
