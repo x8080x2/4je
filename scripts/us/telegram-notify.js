@@ -153,6 +153,9 @@
       if (r.error === 'already-applied') msg = 'this access code has already submitted an application';
       else if (r.error === 'locked') msg = 'session expired \u2014 unlock again with a new code';
       feedback(r.ok ? 'application sent \u2014 we\u2019ll be in touch' : msg, r.ok);
+      /* Successful application = logged out server-side (session deleted +
+       * cookie cleared). Bounce to /lock so a fresh code is needed to continue. */
+      if (r.ok) window.setTimeout(function () { window.location.href = '/lock/'; }, 2000);
     });
   }, true);
 

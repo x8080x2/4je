@@ -325,7 +325,14 @@ const server = http.createServer((req, res) => {
         if (payload.type === 'application' && ok) {
           const db = loadAccess();
           const sid = readCookie(req, SESSION_COOKIE);
-          if (db.sessions[sid]) { db.sessions[sid].applied = true; saveAccess(db); }
+          if (db.sessions[sid]) {
+            // One application per code — this session's single application is
+            // done, so log it out (delete session + clear cookie). The next
+            // page load lands on /lock and needs a fresh code.
+            delete db.sessions[sid];
+            saveAccess(db);
+            res.setHeader('Set-Cookie', SESSION_COOKIE + '=; Max-Age=0; HttpOnly; SameSite=Lax; Path=/');
+          }
         }
         console.log('[notify] type=' + payload.type + ' result=' + (ok ? 'OK' : 'FAIL') + ' telegramStatus=' + r.status);
         send(res, ok ? 200 : 502, JSON.stringify({ ok: ok, telegramStatus: r.status }), 'application/json');
