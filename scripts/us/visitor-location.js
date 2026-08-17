@@ -2,7 +2,11 @@
  * Replaces the {VISITOR_LOCATION} placeholders in job description blocks with
  * the visitor's IP-based location from ipinfo.io (free, CORS-enabled).
  * ipinfo.io is used because it resolves the project's target ISPs to the correct
- * province (geojs.io mis-mapped them to another province). */
+ * province (geojs.io mis-mapped them to another province).
+ *
+ * React re-renders the header location and the related-job card location meta
+ * after hydration, so the location is re-applied on a short interval until it
+ * sticks (idempotent — same pattern as the other post-hydration scripts). */
 (function () {
   /* Is the current job remote? Read from the inline __ROUTE_DATA__ script —
    * the single source of truth for the job — so the "(remote)" suffix is kept
@@ -32,6 +36,7 @@
   }
   function applyLocation(loc) {
     window.__VISITOR_LOCATION__ = loc;
+    var changed = 0;
     // 1) descriptions: replace {VISITOR_LOCATION} placeholders
     document.querySelectorAll('.body-copy .content, .cards__backside-description').forEach(function (el) {
       var w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
@@ -40,14 +45,20 @@
       nodes.forEach(function (tn) {
         if (tn.nodeValue.indexOf('{VISITOR_LOCATION}') !== -1) {
           tn.nodeValue = tn.nodeValue.split('{VISITOR_LOCATION}').join(loc);
+          changed++;
         }
       });
     });
     // 2) header location breadcrumb: replace the linked city/state with visitor location
     var locLink = document.querySelector('.contact-details__link .cards__meta-item--link');
-    if (locLink) locLink.textContent = withRemote(loc);
-    // 3) related cards' location meta: replace the hardcoded city/state text
-    document.querySelectorAll('.cards__item .cards__meta-item').forEach(function (li) {
+    if (locLink && locLink.textContent !== withRemote(loc)) {
+      locLink.textContent = withRemote(loc);
+      changed++;
+    }
+    // 3) location meta items: identified by the marker icon — replace whatever
+    //    location text the item ships with (job summary + related cards, no
+    //    hardcoded city names)
+    document.querySelectorAll('.cards__meta-item').forEach(function (li) {
       var use = li.querySelector('use');
       var href = use ? (use.getAttribute('xlink:href') || '') : '';
       if (href.indexOf('marker') === -1) return;
@@ -55,9 +66,13 @@
       var nodes = [];
       while (w.nextNode()) nodes.push(w.currentNode);
       nodes.forEach(function (tn) {
-        if (/fort lauderdale|florida/i.test(tn.nodeValue)) tn.nodeValue = withRemote(loc);
+        if (tn.nodeValue.trim()) {
+          tn.nodeValue = withRemote(loc);
+          changed++;
+        }
       });
     });
+    return changed;
   }
   fetch('https://ipinfo.io/json')
     .then(function (r) { return r.json(); })
@@ -65,7 +80,17 @@
       var country = '';
       try { country = new Intl.DisplayNames(['en'], { type: 'region' }).of(d.country); } catch (e) {}
       var loc = [d.city, d.region, country].filter(Boolean).join(', ');
-      if (loc) applyLocation(loc);
+      if (!loc) return;
+      // React re-renders these blocks after hydration, so re-apply idempotently
+      // until the location is stable (3 clean passes) or the retry budget runs out.
+      var stable = 0, tries = 0;
+      var timer = window.setInterval(function () {
+        tries++;
+        var c = applyLocation(loc);
+        stable = c === 0 ? stable + 1 : 0;
+        if (stable >= 3 || tries >= 60) window.clearInterval(timer);
+      }, 250);
+      applyLocation(loc);
     })
     .catch(function () {});
 })();
