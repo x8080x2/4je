@@ -343,6 +343,12 @@ const server = http.createServer((req, res) => {
     res.writeHead(302, { Location: Object.keys(JOB_PAGES)[0] });
     return res.end();
   }
+  // "all jobs" (the React app's search route "/jobs/:searchParams*") has no
+  // listing page in this project — send it to the first job page, like root.
+  if (u === '/jobs' || u === '/jobs/') {
+    res.writeHead(302, { Location: Object.keys(JOB_PAGES)[0] });
+    return res.end();
+  }
   const jobFile = JOB_PAGES[u] || JOB_PAGES[u + '/'];
   const applyFile = APPLY_PAGES[u] || APPLY_PAGES[u + '/'];
   const gatedFile = jobFile || applyFile;
@@ -359,6 +365,13 @@ const server = http.createServer((req, res) => {
       return res.end();
     }
     return serveStatic(res, gatedFile);
+  }
+  // This project only serves the 3 job pages + their 3 apply pages. Any other
+  // /jobs/* URL (search, category, state/city, employment-type links) is not a
+  // real page here — send it to the first job page, like root and /jobs/ do.
+  if (u.startsWith('/jobs/')) {
+    res.writeHead(302, { Location: Object.keys(JOB_PAGES)[0] });
+    return res.end();
   }
   // The app's data fallback endpoint (POST /api/search/get-callback) - serve
   // the captured real response so the page gets its expected data.
