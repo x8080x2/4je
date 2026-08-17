@@ -1,3 +1,6 @@
 node_modules/
 .env
 .DS_Store
+# Access codes/sessions live only on the running instance (single source of
+# truth). Never commit them — a deploy would overwrite the live store.
+data/access.json
