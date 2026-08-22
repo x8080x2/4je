@@ -191,12 +191,37 @@ const JOB_PAGES = {
   '/jobs/308/AB_4976816/administrative-assistant_fort-lauderdale/': 'jobs/308/AB_4976816/administrative-assistant_fort-lauderdale/index.html',
   '/jobs/310/1142422-8/sales-representative_fort-lauderdale/': 'jobs/310/1142422-8/sales-representative_fort-lauderdale/index.html',
   '/jobs/309/ab_4979675/administrative-assistance_fort-lauderdale/': 'jobs/309/ab_4979675/administrative-assistance_fort-lauderdale/index.html',
+  '/jobs/311/AB_9031852/warehouse-inventory-coordinator_fort-lauderdale/': 'jobs/311/AB_9031852/warehouse-inventory-coordinator_fort-lauderdale/index.html',
 };
 const APPLY_PAGES = {
   '/jobs/apply/308/AB_4976816/': 'jobs/apply/308/AB_4976816/index.html',
   '/jobs/apply/310/1142422-8/': 'jobs/apply/310/1142422-8/index.html',
   '/jobs/apply/309/ab_4979675/': 'jobs/apply/309/ab_4979675/index.html',
+  '/jobs/apply/311/AB_9031852/': 'jobs/apply/311/AB_9031852/index.html',
 };
+
+// Client-side link allowlist: every path this server actually serves as a
+// page/endpoint. Injected into each served job/apply page so neutralize-links.js
+// can no-op any template link (nav/breadcrumb/footer) pointing elsewhere.
+function realRoutePaths() {
+  const paths = [];
+  for (const k of Object.keys(JOB_PAGES)) paths.push(k);
+  for (const k of Object.keys(APPLY_PAGES)) paths.push(k);
+  paths.push('/lock', '/health', '/api/access/unlock', '/api/telegram/notify', '/api/search/get-callback');
+  return paths;
+}
+
+// Job metadata for the client-side related-jobs cards. URLs come from
+// JOB_PAGES (single source of truth for routes); titles/types are fixed.
+function jobMeta() {
+  const meta = {
+    '/jobs/308/AB_4976816/administrative-assistant_fort-lauderdale/': { title: 'customer service representative', type: 'temporary' },
+    '/jobs/309/ab_4979675/administrative-assistance_fort-lauderdale/': { title: 'administrative assistance', type: 'temp to perm' },
+    '/jobs/310/1142422-8/sales-representative_fort-lauderdale/': { title: 'sales representative', type: 'temporary' },
+    '/jobs/311/AB_9031852/warehouse-inventory-coordinator_fort-lauderdale/': { title: 'warehouse/inventory coordinator', type: 'temp to perm' },
+  };
+  return Object.keys(JOB_PAGES).map((u) => ({ url: u, title: meta[u].title, type: meta[u].type }));
+}
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -240,6 +265,19 @@ function serveStatic(res, urlPath) {
       if (err2) return send(res, 404, 'Not Found');
       send(res, 200, data, MIME[path.extname(file).toLowerCase()] || 'application/octet-stream');
     });
+  });
+}
+
+// Serves a job/apply page with the real-routes allowlist injected before
+// </body> so neutralize-links.js knows which internal links are real.
+function servePage(res, relFile) {
+  fs.readFile(path.join(ROOT, relFile), (err, data) => {
+    if (err) return send(res, 404, 'Not Found');
+    const html = data.toString().replace(
+      '</body>',
+      '<script>window.JOBEM_REAL_ROUTES=' + JSON.stringify(realRoutePaths()) + ';window.JOBEM_JOBS=' + JSON.stringify(jobMeta()) + ';</script></body>'
+    );
+    send(res, 200, html, MIME['.html']);
   });
 }
 
@@ -371,9 +409,9 @@ const server = http.createServer((req, res) => {
       res.writeHead(302, { Location: '/lock/?' + qs.toString(), 'Cache-Control': 'no-store' });
       return res.end();
     }
-    return serveStatic(res, gatedFile);
+    return servePage(res, gatedFile);
   }
-  // This project only serves the 3 job pages + their 3 apply pages. Any other
+  // This project only serves the 4 job pages + their 4 apply pages. Any other
   // /jobs/* URL (search, category, state/city, employment-type links) is not a
   // real page here — send it to the first job page, like root and /jobs/ do.
   if (u.startsWith('/jobs/')) {

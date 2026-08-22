@@ -65,12 +65,19 @@
       var w = document.createTreeWalker(li, NodeFilter.SHOW_TEXT, null, false);
       var nodes = [];
       while (w.nextNode()) nodes.push(w.currentNode);
-      nodes.forEach(function (tn) {
-        if (tn.nodeValue.trim()) {
-          tn.nodeValue = withRemote(loc);
-          changed++;
-        }
-      });
+      if (!nodes.length) return;
+      // Fill the first text node — even when the static HTML ships it empty.
+      // The visitor's location is the only source (no hardcoded fallback).
+      var target = nodes[0];
+      for (var i = 0; i < nodes.length; i++) {
+        if (nodes[i].nodeValue && nodes[i].nodeValue.trim()) { target = nodes[i]; break; }
+      }
+      var prev = target.nodeValue;
+      target.nodeValue = withRemote(loc);
+      for (var j = 0; j < nodes.length; j++) {
+        if (nodes[j] !== target) nodes[j].nodeValue = '';
+      }
+      if (target.nodeValue !== prev) changed++;
     });
     return changed;
   }

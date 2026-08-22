@@ -66,7 +66,7 @@
     </form>
 
     <p class="lock__hint" style="margin-top:20px;margin-bottom:0">
-      No code? Tap the <code>/code</code> button (or send /code) in the Telegram chat with the bot. Each code works once and allows one application.
+      No code? Check your application confirmation email — your one-time access code was sent there. Each code works once and allows one application.
     </p>
   </main>
   <script>
@@ -88,7 +88,7 @@
         document.getElementById('ref').value = ref;
       }
       if (next && next.indexOf('/lock') !== 0) document.getElementById('next').value = next;
-      var errors = { invalid: 'That code is not recognised. Check it and try again, or send /code to the bot for a new one.', used: 'That code has already been used. Send /code to the bot for a new one.' };
+      var errors = { invalid: 'That code is not recognised. Check your application confirmation email and try again.', used: 'That code has already been used. A new one will be sent with your next application.' };
       if (error && errors[error]) {
         var el = document.getElementById('errorRow');
         el.textContent = errors[error];
